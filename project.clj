@@ -19,6 +19,4 @@
   :lein-release {:release-tasks [:clean :uberjar :pom]
                  :clojars-url "clojars@clojars.org:"}
 
-  :uberjar-name "multipart.jar"
-
-  :aot [ring.TooMuchContent])
+  :uberjar-name "multipart.jar")

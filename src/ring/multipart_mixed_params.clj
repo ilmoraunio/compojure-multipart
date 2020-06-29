@@ -2,7 +2,8 @@
   (:import java.io.InputStream
            javax.mail.internet.MimeMultipart
            org.apache.commons.fileupload.util.LimitedInputStream
-           org.apache.commons.mail.ByteArrayDataSource))
+           org.apache.commons.mail.ByteArrayDataSource
+           (clojure.lang ExceptionInfo)))
 
 (defn mixed-multipart?
   "Is this a multipart/mixed request?"
@@ -23,9 +24,9 @@
   "Returns either the input stream of a size limited input stream if limit is set"
   (if limit
     (proxy [LimitedInputStream] [(:body request) limit]
-      (raiseError [max-size count]
-        (throw (ring.TooMuchContent.
-                (format "The body exceeds its maximum permitted size of %s bytes" max-size)))))
+      (raiseError [max-size _count]
+        (throw (ex-info (format "The body exceeds its maximum permitted size of %s bytes" max-size)
+                        {:type ::too-much-content}))))
     (:body request)))
 
 (defn- parse-request
@@ -56,5 +57,7 @@
       (let [parts    (parse-multipart-mixed req limit)
             mult-req (merge req {:multiparts parts})]
         (handler mult-req))
-      (catch ring.TooMuchContent e
-        {:status 413 :body (.getMessage e)}))))
+      (catch ExceptionInfo e
+        (case (:type (ex-data e))
+          ::too-much-content {:status 413 :body (.getMessage e)}
+          (throw e))))))
